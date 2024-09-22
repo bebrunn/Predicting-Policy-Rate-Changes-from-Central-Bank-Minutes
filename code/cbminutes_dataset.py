@@ -52,7 +52,7 @@ class CBMinutesDataset:
                 "labels": [],
             }
             for line in data_file:
-                line = line.decode("utf-8").rstrip("\r\n")
+                line = line.rstrip("\r\n")
                 label, document = line.split("\t", maxsplit=1)
 
                 self._data["documents"].append(document)
@@ -114,7 +114,7 @@ class CBMinutesDataset:
         self._directory = directory
 
         for dataset in ["train", "dev", "test"]:
-            file_path = os.path.join(dataset, f"cbminutes_{dataset}.txt")
+            file_path = os.path.join(self._directory, dataset, f"{dataset}.tsv")
 
             with open(file_path, "r") as dataset_file:
                 setattr(self, dataset, self.Dataset(dataset_file, train=getattr(self, "train", None)))
