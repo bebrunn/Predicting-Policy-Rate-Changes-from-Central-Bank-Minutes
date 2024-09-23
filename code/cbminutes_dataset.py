@@ -115,6 +115,7 @@ class CBMinutesDataset:
 
         for dataset in ["train", "dev", "test"]:
             file_path = os.path.join(self._directory, dataset, f"{dataset}.tsv")
+            print(f"Opening file: {file_path}")
 
             with open(file_path, "r") as dataset_file:
                 setattr(self, dataset, self.Dataset(dataset_file, train=getattr(self, "train", None)))
@@ -135,6 +136,17 @@ class CBMinutesDataset:
         predictions = [line.strip("\r\n") for line in predictions_file]
         return CBMinutesDataset.evaluate(gold_dataset, predictions)
 
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--evaluate", default=True, type=str, help="Prediction file to evaluate")
+    parser.add_argument("--dataset", default="test", type=str, help="Gold dataset to evaluate")
+    args = parser.parse_args()
 
+    if args.evaluate:
+        with open(args.evaluate, "r", encoding="utf-8-sig") as predictions_file:
+            accuracy = CBMinutesDataset.evaluate_file(
+                getattr(CBMinutesDataset("./data"), args.dataset), predictions_file)
+        print("Text classification accuracy: {:.2f}%".format(accuracy))
 
 
