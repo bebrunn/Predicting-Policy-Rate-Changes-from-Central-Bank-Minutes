@@ -139,7 +139,7 @@ class CBMinutesDataset:
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--evaluate", default=True, type=str, help="Prediction file to evaluate")
+    parser.add_argument("--evaluate", default="./logs", type=str, help="Prediction file to evaluate")
     parser.add_argument("--dataset", default="test", type=str, help="Gold dataset to evaluate")
     args = parser.parse_args()
 
