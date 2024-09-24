@@ -14,7 +14,7 @@ from cbminutes_dataset import CBMinutesDataset
 # Create argsparser to adjust arguments in shell.
 parser = argparse.ArgumentParser()
 parser.add_argument("--batch_size", default=16, type=int, help="Batch size used for training.")
-parser.add_argument("--epochs", default=5, type=int, help="Number of training epochs.")
+parser.add_argument("--epochs", default=4, type=int, help="Number of training epochs.")
 parser.add_argument("--seed", default=17, type=int, help="Random seed.")
 parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
 parser.add_argument("--backbone", default="bert-large-uncased", type=str, help="Pre-trained transformer.")
