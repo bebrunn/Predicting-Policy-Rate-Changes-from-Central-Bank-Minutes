@@ -139,14 +139,14 @@ class CBMinutesDataset:
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--evaluate", default="./logs", type=str, help="Prediction file to evaluate")
+    parser.add_argument("--evaluate", default=None, type=str, help="Prediction file to evaluate")
     parser.add_argument("--dataset", default="test", type=str, help="Gold dataset to evaluate")
     args = parser.parse_args()
 
     if args.evaluate:
         with open(args.evaluate, "r", encoding="utf-8-sig") as predictions_file:
             accuracy = CBMinutesDataset.evaluate_file(
-                getattr(CBMinutesDataset("../data"), args.dataset), predictions_file)
+                getattr(CBMinutesDataset("./data"), args.dataset), predictions_file)
         print("Text classification accuracy: {:.2f}%".format(accuracy))
 
 
