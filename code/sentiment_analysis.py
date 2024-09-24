@@ -110,7 +110,7 @@ def main(args):
     )
     
     # Fit the model to the data
-    model.fit(train, dev=dev, epochs=args.epochs)#, callbacks=[predict_callback])
+    model.fit(train, dev=dev, epochs=args.epochs)
 
     # Save the model weights
     os.makedirs(args.logdir, exist_ok=True)
