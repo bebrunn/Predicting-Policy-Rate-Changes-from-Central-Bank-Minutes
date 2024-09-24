@@ -109,18 +109,12 @@ def main(args):
         logdir=args.logdir,
     )
     
-    # def predict_callback(self, epoch, logs):
-    #     model.predict(dev)
-    #     # Generate test set annotations, but in 'args.logdir' to allow for parallel execution
-    #     os.makedirs(args.logdir, exist_ok=True)
-    #     with open(os.path.join(args.logdir, f"sentiment_analysis{epoch}.txt"), "w", encoding="utf-8") as prediction_file:
-    #         # Predict the tags on the test set
-    #         predictions = model.predict(test)
-    #         for sentence in predictions:
-    #             print(minutes.train.label_vocab.string(int(np.argmax(sentence))), file=prediction_file)
-
     # Fit the model to the data
     model.fit(train, dev=dev, epochs=args.epochs)#, callbacks=[predict_callback])
+
+    # Save the model weights
+    os.makedirs(args.logdir, exist_ok=True)
+    torch.save(model.state_dict(), os.path.join(args.logdir, "model_weights.pth"))
 
     # Generate test set annotations, but in 'args.logdir' to allow for parallel execution
     os.makedirs(args.logdir, exist_ok=True)
