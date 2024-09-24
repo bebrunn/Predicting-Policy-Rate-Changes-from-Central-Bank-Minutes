@@ -91,7 +91,6 @@ def main(args):
     # Create the model
     model = Model(args, backbone, minutes.train)
     optimizer = torch.optim.AdamW(backbone.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    # schedule = torch.optim.lr_scheduler.StepLR(optimizer, step_size=len(train), gamma=0.1, last_epoch=-1)
     total_steps = len(train) * args.epochs
     schedule = transformers.get_linear_schedule_with_warmup(
         optimizer, 
@@ -110,18 +109,18 @@ def main(args):
         logdir=args.logdir,
     )
     
-    def predict_callback(self, epoch, logs):
-        model.predict(dev)
-        # Generate test set annotations, but in 'args.logdir' to allow for parallel execution
-        os.makedirs(args.logdir, exist_ok=True)
-        with open(os.path.join(args.logdir, f"sentiment_analysis{epoch}.txt"), "w", encoding="utf-8") as prediction_file:
-            # Predict the tags on the test set
-            predictions = model.predict(test)
-            for sentence in predictions:
-                print(minutes.train.label_vocab.string(int(np.argmax(sentence))), file=prediction_file)
+    # def predict_callback(self, epoch, logs):
+    #     model.predict(dev)
+    #     # Generate test set annotations, but in 'args.logdir' to allow for parallel execution
+    #     os.makedirs(args.logdir, exist_ok=True)
+    #     with open(os.path.join(args.logdir, f"sentiment_analysis{epoch}.txt"), "w", encoding="utf-8") as prediction_file:
+    #         # Predict the tags on the test set
+    #         predictions = model.predict(test)
+    #         for sentence in predictions:
+    #             print(minutes.train.label_vocab.string(int(np.argmax(sentence))), file=prediction_file)
 
     # Fit the model to the data
-    model.fit(train, dev=dev, epochs=args.epochs, callbacks=[predict_callback])
+    model.fit(train, dev=dev, epochs=args.epochs)#, callbacks=[predict_callback])
 
     # Generate test set annotations, but in 'args.logdir' to allow for parallel execution
     os.makedirs(args.logdir, exist_ok=True)
