@@ -146,7 +146,7 @@ if __name__ == "__main__":
     if args.evaluate:
         with open(args.evaluate, "r", encoding="utf-8-sig") as predictions_file:
             accuracy = CBMinutesDataset.evaluate_file(
-                getattr(CBMinutesDataset("./data"), args.dataset), predictions_file)
+                getattr(CBMinutesDataset("../data"), args.dataset), predictions_file)
         print("Text classification accuracy: {:.2f}%".format(accuracy))
 
 
