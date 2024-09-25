@@ -42,7 +42,8 @@ class NewMinutes:
 def main(args):
     # Load the model and its weights for inference
     backbone = transformers.AutoModel.from_pretrained(args.backbone)
-    model = Model(args, backbone, CBMinutesDataset("../data"))
+    dataset = CBMinutesDataset("../data")
+    model = Model(args, backbone, dataset)
     model.load_state_dict(torch.load(args.model_weights))
     model.eval()
 
@@ -80,7 +81,7 @@ def main(args):
     # Save the predicition
     with open("sentiment_predictions.tsv", "w", encoding="utf-8") as file:
         for doc_name, sentiment in document_sentiments.items():
-            file.write(f"{doc_name}\t{sentiment}")
+            file.write(f"{doc_name}\t{sentiment}\n")
 
 
 if __name__ == "__main__":

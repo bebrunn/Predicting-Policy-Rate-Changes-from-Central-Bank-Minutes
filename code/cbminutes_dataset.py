@@ -61,7 +61,7 @@ class CBMinutesDataset:
 
             # Create or copy the label mapping.
             if train:
-                self._label_vocab = train._label_vocab
+                self._label_vocab = train.label_vocab
             else:
                 self._label_vocab = Vocabulary(sorted(set(self._data["labels"])))
 
