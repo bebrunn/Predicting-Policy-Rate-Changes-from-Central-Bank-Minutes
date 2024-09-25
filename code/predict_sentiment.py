@@ -4,8 +4,9 @@ import os
 import argparse
 
 import torch
-import pandas as pd 
 import transformers
+import pandas as pd
+import spacy
 
 # Import data set and model for inference
 from cbminutes_dataset import CBMinutesDataset
