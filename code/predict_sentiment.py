@@ -43,7 +43,7 @@ def main(args):
     # Load the model and its weights for inference
     backbone = transformers.AutoModel.from_pretrained(args.backbone)
     dataset = CBMinutesDataset("../data")
-    model = Model(args, backbone, dataset)
+    model = Model(args, backbone, dataset.train)
     model.load_state_dict(torch.load(args.model_weights))
     model.eval()
 
@@ -60,17 +60,19 @@ def main(args):
     # Loop over documents and classify their sentences
     for doc_name, sentences in documents.items():
 
-        # Tokenize the each sentence in a document
-        tokenized_docs = tokenizer(sentences, padding="longest", return_attention_mask=True, return_tensors="pt")
+        for i in range(0, len(sentences), 16):
 
-        # Extract the input_ids and attention_masks from sentence tokenizations
-        input_ids = tokenized_docs["input_ids"]
-        attention_mask = tokenized_docs["attention_mask"]
+            # Tokenize the each sentence in a document
+            tokenized_docs = tokenizer(sentences[i:i+16], padding="longest", return_attention_mask=True, return_tensors="pt")
 
-        # Predict sentiment for each sentence
-        with torch.no_grad():
-            predictions = model(input_ids, attention_mask)
-            sentence_predictions = torch.argmax(predictions, dim=1).cpu().numpy()
+            # Extract the input_ids and attention_masks from sentence tokenizations
+            input_ids = tokenized_docs["input_ids"]
+            attention_mask = tokenized_docs["attention_mask"]
+
+            # Predict sentiment for each sentence
+            with torch.no_grad():
+                predictions = model(input_ids, attention_mask)
+                sentence_predictions = torch.argmax(predictions, dim=1).cpu().numpy()
 
         # Determine sentiment of overall minute by majority vote
         overall_sentiment = np.bincount(sentence_predictions).argmax()
