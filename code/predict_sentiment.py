@@ -60,10 +60,12 @@ def main(args):
     # Loop over documents and classify their sentences
     for doc_name, sentences in documents.items():
         # Classify all documents in batches of 16.
-        for i in range(0, len(sentences), 16):
+        for i in range(0, len(sentences), args.batch_size):
 
             # Tokenize the each sentence in a document
-            tokenized_docs = tokenizer(sentences[i:i+16], padding="longest", return_attention_mask=True, return_tensors="pt")
+            tokenized_docs = tokenizer(
+                sentences[i:i+args.batch_size], padding="longest", return_attention_mask=True, return_tensors="pt"
+                )
 
             # Extract the input_ids and attention_masks from sentence tokenizations
             input_ids = tokenized_docs["input_ids"]
@@ -77,6 +79,8 @@ def main(args):
         # Determine sentiment of overall minute by majority vote.
         # FIXME: I can determine the degree of hawking and dovishness by call np.mean(sentence_predictions) - 1
         # if dovish=0, neutral=1, and hawkish=1.
+        # overall_sentiment = np.mean(sentence_predictions) - 1
+        # String map has form: {'[PAD]': 0, '[UNK]': 1, 'dovish': 2, 'hawkish': 3, 'neutral': 4}!!!!
         overall_sentiment = np.bincount(sentence_predictions).argmax()
 
         # Store overall sentiment for each document
