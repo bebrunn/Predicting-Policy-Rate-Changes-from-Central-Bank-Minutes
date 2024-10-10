@@ -15,11 +15,11 @@ from cbminutes_dataset import CBMinutesDataset
 
 # Create argsparser to adjust arguments in shell.
 parser = argparse.ArgumentParser()
-parser.add_argument("--batch_size", default=32, type=int, help="Batch size used for training.")
-parser.add_argument("--epochs", default=5, type=int, help="Number of training epochs.")
+parser.add_argument("--batch_size", default=16, type=int, help="Batch size used for training.")
+parser.add_argument("--epochs", default=10, type=int, help="Number of training epochs.")
 parser.add_argument("--seed", default=17, type=int, help="Random seed.")
 parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
-parser.add_argument("--backbone", default="FacebookAI/roberta-base", type=str, help="Pre-trained transformer.")
+parser.add_argument("--backbone", default="bert-large-uncased", type=str, help="Pre-trained transformer.")
 parser.add_argument("--learning_rate", default=1e-05, type=float, help="Learning rate.")
 parser.add_argument("--dropout", default=0.1, type=float, help="Dropout rate.")
 parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight decay.")
@@ -33,7 +33,8 @@ class Model(TrainableModule):
         super().__init__()
         # Initialize Model class by defining it.
         self._backbone = backbone
-        self._dense = torch.nn.Linear(backbone.config.hidden_size, backbone.config.hidden_size * 2)
+        self._dense_1 = torch.nn.Linear(backbone.config.hidden_size, backbone.config.hidden_size * 4)
+        self._dense_2 = torch.nn.Linear(backbone.config.hidden_size * 4, backbone.config.hidden_size * 2)
         self._dropout = torch.nn.Dropout(args.dropout)
         self._activation = torch.nn.ReLU()
         self._classifier = torch.nn.Linear(backbone.config.hidden_size * 2, len(dataset.label_vocab))
@@ -41,7 +42,10 @@ class Model(TrainableModule):
     # Implement the model computation.
     def forward(self, input_ids, attention_mask):
         hidden = self._backbone(input_ids, attention_mask).last_hidden_state
-        hidden = self._dense(hidden)
+        hidden = self._dense_1(hidden)
+        hidden = self._activation(hidden)
+        hidden = self._dropout(hidden)
+        hidden = self._dense_2(hidden)
         hidden = self._activation(hidden)
         hidden = self._dropout(hidden)
         hidden = self._classifier(hidden)
@@ -119,9 +123,6 @@ def main(args):
     if args.save_weights:
         os.makedirs(args.logdir, exist_ok=True)
         torch.save(model.state_dict(), os.path.join(args.logdir, "model_weights.pth"))
-
-
-    print(minutes.train.label_vocab._string_map)
         
 
     # Generate test set annotations, but in 'args.logdir' to allow for parallel execution

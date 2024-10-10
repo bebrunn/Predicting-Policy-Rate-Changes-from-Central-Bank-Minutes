@@ -44,17 +44,18 @@ def main(args):
     backbone = transformers.AutoModel.from_pretrained(args.backbone)
     dataset = CBMinutesDataset("../data")
     model = Model(args, backbone, dataset.train)
-    model.load_state_dict(torch.load(args.model_weights, weights_only=True))
+    # model.load_state_dict(torch.load(args.model_weights, weights_only=True))
     model.eval()
 
     # Load new data
     minutes = NewMinutes("../data/new_data")
     documents = minutes.documents 
+    print(dataset.train.label_vocab._string_map)
 
     # Initialize tokenizer
     tokenizer = transformers.AutoTokenizer.from_pretrained(args.backbone)
 
-    # Intialize dictionary to store overall
+    # Intialize dictionary to store overall sentiment
     document_sentiments = {}
 
     # Loop over documents and classify their sentences
@@ -74,14 +75,12 @@ def main(args):
             # Predict sentiment for each sentence
             with torch.no_grad():
                 predictions = model(input_ids, attention_mask)
-                sentence_predictions = torch.argmax(predictions, dim=1).cpu().numpy()
+                # sentence_predictions = torch.argmax(predictions, dim=1).cpu().numpy()
+                # Radu et al. predict sentence sentiment level by computing logit_hawkish - logit_dovish
+                sentence_predictions = predictions[:, 3] - predictions[:, 2]
 
-        # Determine sentiment of overall minute by majority vote.
-        # FIXME: I can determine the degree of hawking and dovishness by call np.mean(sentence_predictions) - 1
-        # if dovish=0, neutral=1, and hawkish=1.
-        # overall_sentiment = np.mean(sentence_predictions) - 1
-        # String map has form: {'[PAD]': 0, '[UNK]': 1, 'dovish': 2, 'hawkish': 3, 'neutral': 4}!!!!
-        overall_sentiment = np.bincount(sentence_predictions).argmax()
+        # overall_sentiment = np.bincount(sentence_predictions).argmax()
+        overall_sentiment = torch.mean(sentence_predictions)
 
         # Store overall sentiment for each document
         document_sentiments[doc_name] = dataset.train.label_vocab.string(int(overall_sentiment))
