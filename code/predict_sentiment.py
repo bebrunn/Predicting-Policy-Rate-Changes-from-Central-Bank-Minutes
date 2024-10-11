@@ -49,9 +49,6 @@ class UnseenMinutes:
             # Create dataset that assigns a list of sentences to each minute
             self.documents[file_path.name] = [sentence.text.strip() for sentence in doc.sents]
 
-            # Map from individual sentences back to individual minutes
-            for sentence in doc.sents:
-                self.sentence_to_document[sentence.text] = file_path.name
 
 def main(args):
     # Load the model and its weights for inference
@@ -70,7 +67,7 @@ def main(args):
 
     # Load new data.
     minutes = UnseenMinutes("../data/new_data", nlp)
-    
+
     # Get string map of labels.
     labels = dataset.train.label_vocab._string_map
 
