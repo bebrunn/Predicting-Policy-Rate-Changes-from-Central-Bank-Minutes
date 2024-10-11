@@ -17,74 +17,92 @@ from sentiment_analysis import parser, Model
 # Create argsparser to adjust arguments in shell.
 parser.add_argument("--model_weights", default=None, type=str, help="Path to model weights.")
 
-class NewMinutes:
-    def __init__(self, directory):
+class UnseenMinutes:
+    # Create dataset class of NewMinutes.
+    class Dataset(torch.utils.data.Dataset):
+        def __init__(self, sentences, tokenizer):
+            self._sentences = sentences
+            self._tokenizer = tokenizer
+
+        def  __len__(self):
+            return len(self._sentences)
+
+        def __getitem__(self, index):
+            return self._sentences[index]
+
+        def tokenize(self, batch):
+            return self._tokenizer(
+                batch, padding="longest", return_attention_mask=True, return_tensors="pt"
+            )
+
+    def __init__(self, directory, nlp):
         self._directory_path = Path(directory)
         self.sentence_to_document = {}
         self.documents = {}
 
-        # Load spacy object
-        nlp = spacy.load("en_core_web_sm")
-    
-        # Extract files, split them in individual sentences, and create dictionaries that map documents <-> sentences.
-        for file_path in self._directory_path.glob("*.txt"):
-            with open(file_path, "r", encoding="utf-8") as file:
-                text = file.read()
-                tokens = nlp(text)
-                # Create dataset that assigns a list of sentences to each minute
-                self.documents[file_path.name] = [sentence.text for sentence in tokens.sents]
-    
-                # Map from individual sentences back to individual minutes
-                for sentence in tokens.sents:
-                    self.sentence_to_document[sentence.text] = file_path.name
+        # Create lists of files and their texts
+        files = list(self._directory_path.glob("*.txt"))
+        files.sort(key=lambda x: x.name)
+        docs = [open(file_path, "r", encoding="utf-8").read() for file_path in files]
 
+        for doc, file_path in zip(nlp.pipe(docs), files):
+            # Create dataset that assigns a list of sentences to each minute
+            self.documents[file_path.name] = [sentence.text.strip() for sentence in doc.sents]
+
+            # Map from individual sentences back to individual minutes
+            for sentence in doc.sents:
+                self.sentence_to_document[sentence.text] = file_path.name
 
 def main(args):
     # Load the model and its weights for inference
     backbone = transformers.AutoModel.from_pretrained(args.backbone)
     dataset = CBMinutesDataset("../data")
     model = Model(args, backbone, dataset.train)
-    # model.load_state_dict(torch.load(args.model_weights, weights_only=True))
+    model.load_state_dict(torch.load(args.model_weights))
     model.eval()
 
-    # Load new data
-    minutes = NewMinutes("../data/new_data")
-    documents = minutes.documents 
-    print(dataset.train.label_vocab._string_map)
+    # Move model to GPU if available.
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
 
-    # Initialize tokenizer
+    # Load spacy NLP pipeline for sentence tokenization
+    nlp = spacy.load("en_core_web_sm")
+
+    # Load new data.
+    minutes = UnseenMinutes("../data/new_data", nlp)
+    
+    # Get string map of labels.
+    labels = dataset.train.label_vocab._string_map
+
+    # Initialize tokenizer.
     tokenizer = transformers.AutoTokenizer.from_pretrained(args.backbone)
 
     # Intialize dictionary to store overall sentiment
     document_sentiments = {}
 
     # Loop over documents and classify their sentences
-    for doc_name, sentences in documents.items():
-        # Classify all documents in batches of 16.
-        for i in range(0, len(sentences), args.batch_size):
+    for doc_name, sentences in minutes.documents.items():
+        sentences_dataset = minutes.Dataset(sentences, tokenizer)
+        sentences_loader = torch.utils.data.DataLoader(
+            sentences_dataset, batch_size=args.batch_size, shuffle=False, collate_fn=sentences_dataset.tokenize
+        )
 
-            # Tokenize the each sentence in a document
-            tokenized_docs = tokenizer(
-                sentences[i:i+args.batch_size], padding="longest", return_attention_mask=True, return_tensors="pt"
-                )
+        all_sentence_predictions = []
+        for batch in sentences_loader:
+            input_ids = batch["input_ids"].to(device)
+            attention_mask = batch["attention_mask"].to(device)
 
-            # Extract the input_ids and attention_masks from sentence tokenizations
-            input_ids = tokenized_docs["input_ids"]
-            attention_mask = tokenized_docs["attention_mask"]
-
-            # Predict sentiment for each sentence
             with torch.no_grad():
                 predictions = model(input_ids, attention_mask)
-                # sentence_predictions = torch.argmax(predictions, dim=1).cpu().numpy()
-                # Radu et al. predict sentence sentiment level by computing logit_hawkish - logit_dovish
-                sentence_predictions = predictions[:, 3] - predictions[:, 2]
+                sentence_predictions = predictions[:, labels["hawkish"]] - predictions[:, labels["dovish"]]
+                all_sentence_predictions.extend(sentence_predictions.cpu().numpy())
 
-        # overall_sentiment = np.bincount(sentence_predictions).argmax()
-        overall_sentiment = torch.mean(sentence_predictions)
+        # Compute overall sentiment for the document by averaging sentence predictions
+        overall_sentiment = np.mean(all_sentence_predictions)
 
         # Store overall sentiment for each document
-        document_sentiments[doc_name] = dataset.train.label_vocab.string(int(overall_sentiment))
-
+        document_sentiments[doc_name] = overall_sentiment
+    
     # Save the predicition
     pred_directory = "../predictions"
     os.makedirs(pred_directory, exist_ok=True)
