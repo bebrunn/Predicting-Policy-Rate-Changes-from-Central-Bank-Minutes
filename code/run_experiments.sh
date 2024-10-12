@@ -1,39 +1,41 @@
 #!/bin/bash
 
-# Constants for fixed hyperparameters
-SEED=17
-THREADS=1
-BACKBONE="bert-base-uncased"
-LEARNING_RATE=5e-05
-DROPOUT=0.1
-WEIGHT_DECAY=0.01
-SAVE_WEIGHTS=False
+# Define the list of hyperparameters to vary
+batch_sizes=(16 32)
+epochs=(2 3 4)
+learning_rates=(5e-5 3e-5 2e-5)
+lr_schedules=("linear" "cosine")
+label_smoothings=(0.0 0.1)
 
-# Hyperparameters to tune
-BATCH_SIZES=(16 32)
-EPOCHS=(2 3 4)
-LR_SCHEDULES=("linear" "cosine" "None")  # Using "None" as a string
-LABEL_SMOOTHINGS=(0.0 0.1)
+# Other constant hyperparameters
+seed=17
+threads=1
+backbone="bert-base-uncased"
+dropout=0.1
+weight_decay=0.01
 
-# Loop through all combinations of the hyperparameters
-for BATCH_SIZE in "${BATCH_SIZES[@]}"; do
-    for EPOCH in "${EPOCHS[@]}"; do
-        for LR_SCHEDULE in "${LR_SCHEDULES[@]}"; do
-            for LABEL_SMOOTH in "${LABEL_SMOOTHINGS[@]}"; do
-                echo "Running with batch_size=$BATCH_SIZE, epochs=$EPOCH, lr_schedule=$LR_SCHEDULE, label_smoothing=$LABEL_SMOOTH"
-                python3 sentiment_analysis.py \
-                    --batch_size "$BATCH_SIZE" \
-                    --epochs "$EPOCH" \
-                    --seed "$SEED" \
-                    --threads "$THREADS" \
-                    --backbone "$BACKBONE" \
-                    --learning_rate "$LEARNING_RATE" \
-                    --lr_schedule "$LR_SCHEDULE" \
-                    --dropout "$DROPOUT" \
-                    --weight_decay "$WEIGHT_DECAY" \
-                    --label_smoothing "$LABEL_SMOOTH" \
-                    --save_weights "$SAVE_WEIGHTS"
-            done
+# Iterate over each combination of hyperparameters
+for batch_size in "${batch_sizes[@]}"; do
+  for epoch in "${epochs[@]}"; do
+    for learning_rate in "${learning_rates[@]}"; do
+      for lr_schedule in "${lr_schedules[@]}"; do
+        for label_smoothing in "${label_smoothings[@]}"; do
+          
+          # Run the Python script with the current combination
+          python3 sentiment_analysis.py \
+            --batch_size $batch_size \
+            --epochs $epoch \
+            --learning_rate $learning_rate \
+            --lr_schedule $lr_schedule \
+            --label_smoothing $label_smoothing \
+            --seed $seed \
+            --threads $threads \
+            --backbone $backbone \
+            --dropout $dropout \
+            --weight_decay $weight_decay
+
         done
+      done
     done
+  done
 done

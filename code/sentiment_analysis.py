@@ -21,11 +21,11 @@ parser.add_argument("--seed", default=17, type=int, help="Random seed.")
 parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
 parser.add_argument("--backbone", default="bert-base-uncased", type=str, help="Pre-trained transformer.")
 parser.add_argument("--learning_rate", default=5e-05, type=float, help="Learning rate.")
-parser.add_argument("--lr_schedule", default="linear", type=str, choices=["linear", "cosine", "None"], help="LR schedule.")
+parser.add_argument("--lr_schedule", default="cosine", type=str, choices=["linear", "cosine"], help="LR schedule.")
 parser.add_argument("--dropout", default=0.1, type=float, help="Dropout rate.")
 parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight decay.")
-parser.add_argument("--label_smoothing", default=0.0, type=float, help="Label smoothing.")
-parser.add_argument("--save_weights", default=False, type=bool, help="Save model weights.")
+parser.add_argument("--label_smoothing", default=0.1, type=float, help="Label smoothing.")
+# parser.add_argument("--save_weights", default=False, type=bool, help="Save model weights.")
 
 # FIXME: Add more arguments if needed (e.g., dropout rate, size of dense layer, etc.).
 
@@ -35,19 +35,20 @@ class Model(TrainableModule):
         super().__init__()
         # Initialize Model class by defining it.
         self._backbone = backbone
-        self._dense = torch.nn.Linear(backbone.config.hidden_size, backbone.config.hidden_size * 3)
-        self._dropout = torch.nn.Dropout(args.dropout)
-        self._activation = torch.nn.GELU()
-        self._classifier = torch.nn.Linear(backbone.config.hidden_size * 3, len(dataset.label_vocab))
+        # self._dense = torch.nn.Linear(backbone.config.hidden_size, backbone.config.hidden_size * 3)
+        # self._dropout = torch.nn.Dropout(args.dropout)
+        # self._activation = torch.nn.GELU()
+        self._classifier = torch.nn.Linear(backbone.config.hidden_size, len(dataset.label_vocab))
 
     # Implement the model computation.
     def forward(self, input_ids, attention_mask):
         hidden = self._backbone(input_ids, attention_mask).last_hidden_state
-        hidden = self._dense(hidden)
-        hidden = self._activation(hidden)
-        hidden = self._dropout(hidden)
+        # hidden = self._dense(hidden)
+        # hidden = self._activation(hidden)
+        # hidden = self._dropout(hidden)
+        hidden = hidden[:, 0]
         hidden = self._classifier(hidden)
-        hidden = torch.mean(hidden, dim=1)
+        # hidden = torch.mean(hidden, dim=1)
         return hidden
 
 def main(args):
@@ -133,10 +134,10 @@ def main(args):
     # Fit the model to the data
     model.fit(train, dev=dev, epochs=args.epochs)
 
-    # Save the model weights
-    if args.save_weights:
-        os.makedirs(args.logdir, exist_ok=True)
-        torch.save(model.state_dict(), os.path.join(args.logdir, "model_weights.pth"))
+    # # Save the model weights
+    # if args.save_weights:
+    #     os.makedirs(args.logdir, exist_ok=True)
+    #     torch.save(model.state_dict(), os.path.join(args.logdir, "model_weights.pth"))
         
 
     # Generate test set annotations, but in 'args.logdir' to allow for parallel execution
