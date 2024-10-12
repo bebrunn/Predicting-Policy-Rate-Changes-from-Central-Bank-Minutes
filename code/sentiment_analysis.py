@@ -21,6 +21,7 @@ parser.add_argument("--seed", default=17, type=int, help="Random seed.")
 parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
 parser.add_argument("--backbone", default="bert-base-uncased", type=str, help="Pre-trained transformer.")
 parser.add_argument("--learning_rate", default=5e-05, type=float, help="Learning rate.")
+parser.add_argument("--lr_schedule", default="linear", type=str, choices=["linear", "cosine", "None"], help="LR schedule.")
 parser.add_argument("--dropout", default=0.1, type=float, help="Dropout rate.")
 parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight decay.")
 parser.add_argument("--label_smoothing", default=0.0, type=float, help="Label smoothing.")
@@ -77,10 +78,10 @@ def main(args):
     
     def prepare_batch(data):
         documents, labels = zip(*data)
-        tokenized_docs = tokenizer(documents, padding="longest", return_attention_mask=True)
+        tokenized_docs = tokenizer(documents, padding="longest", return_attention_mask=True, return_tensors="pt")
         input_ids, attention_mask = tokenized_docs["input_ids"], tokenized_docs["attention_mask"]
         label_ids = minutes.train.label_vocab.indices(labels)
-        return (torch.tensor(input_ids, dtype=torch.long), torch.tensor(attention_mask, dtype=torch.long)), torch.tensor(label_ids, dtype=torch.long)
+        return (input_ids, attention_mask), torch.tensor(label_ids, dtype=torch.long)
     
     def create_dataloader(dataset, shuffle):
         return torch.utils.data.DataLoader(
@@ -92,20 +93,31 @@ def main(args):
     dev = create_dataloader(minutes.dev, shuffle=False)
     test = create_dataloader(minutes.test, shuffle=False)
     
-    # Create the model
+    # Create the model.
     model = Model(args, backbone, minutes.train)
+
+    # Choose the optimizer.
     optimizer = torch.optim.AdamW(backbone.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+
+    # Create the number of total and warm-up steps
     total_steps = len(train) * args.epochs
-    # schedule = transformers.get_linear_schedule_with_warmup(
-    #     optimizer, 
-    #     num_warmup_steps=int(0.1 * total_steps),
-    #     num_training_steps=total_steps,
-    # )
-    schedule = transformers.get_cosine_schedule_with_warmup(
-        optimizer, 
-        num_warmup_steps=int(0.1 * total_steps),
-        num_training_steps=total_steps,
-    )
+    warmup_steps = int(0.1 * total_steps)
+
+    # Choose schedule given argument. 
+    if args.lr_schedule == "linear":
+        schedule = transformers.get_linear_schedule_with_warmup(
+            optimizer, 
+            num_warmup_steps=warmup_steps,
+            num_training_steps=total_steps,
+        )
+    elif args.lr_schedule == "cosine":
+        schedule = transformers.get_cosine_schedule_with_warmup(
+            optimizer, 
+            num_warmup_steps=warmup_steps,
+            num_training_steps=total_steps,
+        )
+    else:
+        schedule = None
 
     # Configure model and train
     model.configure(

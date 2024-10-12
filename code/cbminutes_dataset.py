@@ -117,7 +117,6 @@ class CBMinutesDataset:
 
         for dataset in ["train", "dev", "test"]:
             file_path = os.path.join(self._directory, dataset, f"{dataset}.tsv")
-            print(f"Opening file: {file_path}")
 
             with open(file_path, "r") as dataset_file:
                 setattr(self, dataset, self.Dataset(dataset_file, train=getattr(self, "train", None)))
