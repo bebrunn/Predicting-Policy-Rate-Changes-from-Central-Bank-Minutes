@@ -11,7 +11,8 @@ class Vocabulary:
     # Initialize the Vocabulary class by creating a list  of strings 
     # and then a mapping from strings to indices.
     def __init__(self, strings):
-        self._strings = ["[PAD]", "[UNK]"]
+        # TODO: Why does [] perform so much better than ["[PAD]", "[UNK]"]???
+        self._strings = []#["[PAD]", "[UNK]"]
         self._strings.extend(strings)
         self._string_map = {string: index for index, string in enumerate(self._strings)}
     

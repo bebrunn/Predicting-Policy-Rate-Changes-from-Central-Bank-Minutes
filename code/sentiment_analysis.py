@@ -16,13 +16,14 @@ from cbminutes_dataset import CBMinutesDataset
 # Create argsparser to adjust arguments in shell.
 parser = argparse.ArgumentParser()
 parser.add_argument("--batch_size", default=16, type=int, help="Batch size used for training.")
-parser.add_argument("--epochs", default=10, type=int, help="Number of training epochs.")
+parser.add_argument("--epochs", default=3, type=int, help="Number of training epochs.")
 parser.add_argument("--seed", default=17, type=int, help="Random seed.")
 parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
-parser.add_argument("--backbone", default="bert-large-uncased", type=str, help="Pre-trained transformer.")
-parser.add_argument("--learning_rate", default=1e-05, type=float, help="Learning rate.")
+parser.add_argument("--backbone", default="bert-base-uncased", type=str, help="Pre-trained transformer.")
+parser.add_argument("--learning_rate", default=5e-05, type=float, help="Learning rate.")
 parser.add_argument("--dropout", default=0.1, type=float, help="Dropout rate.")
 parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight decay.")
+parser.add_argument("--label_smoothing", default=0.0, type=float, help="Label smoothing.")
 parser.add_argument("--save_weights", default=False, type=bool, help="Save model weights.")
 
 # FIXME: Add more arguments if needed (e.g., dropout rate, size of dense layer, etc.).
@@ -33,19 +34,15 @@ class Model(TrainableModule):
         super().__init__()
         # Initialize Model class by defining it.
         self._backbone = backbone
-        self._dense_1 = torch.nn.Linear(backbone.config.hidden_size, backbone.config.hidden_size * 4)
-        self._dense_2 = torch.nn.Linear(backbone.config.hidden_size * 4, backbone.config.hidden_size * 2)
+        self._dense = torch.nn.Linear(backbone.config.hidden_size, backbone.config.hidden_size * 3)
         self._dropout = torch.nn.Dropout(args.dropout)
-        self._activation = torch.nn.ReLU()
-        self._classifier = torch.nn.Linear(backbone.config.hidden_size * 2, len(dataset.label_vocab))
+        self._activation = torch.nn.GELU()
+        self._classifier = torch.nn.Linear(backbone.config.hidden_size * 3, len(dataset.label_vocab))
 
     # Implement the model computation.
     def forward(self, input_ids, attention_mask):
         hidden = self._backbone(input_ids, attention_mask).last_hidden_state
-        hidden = self._dense_1(hidden)
-        hidden = self._activation(hidden)
-        hidden = self._dropout(hidden)
-        hidden = self._dense_2(hidden)
+        hidden = self._dense(hidden)
         hidden = self._activation(hidden)
         hidden = self._dropout(hidden)
         hidden = self._classifier(hidden)
@@ -99,9 +96,14 @@ def main(args):
     model = Model(args, backbone, minutes.train)
     optimizer = torch.optim.AdamW(backbone.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     total_steps = len(train) * args.epochs
-    schedule = transformers.get_linear_schedule_with_warmup(
+    # schedule = transformers.get_linear_schedule_with_warmup(
+    #     optimizer, 
+    #     num_warmup_steps=int(0.1 * total_steps),
+    #     num_training_steps=total_steps,
+    # )
+    schedule = transformers.get_cosine_schedule_with_warmup(
         optimizer, 
-        num_warmup_steps=int(0.1 * total_steps), 
+        num_warmup_steps=int(0.1 * total_steps),
         num_training_steps=total_steps,
     )
 
@@ -109,7 +111,7 @@ def main(args):
     model.configure(
         optimizer=optimizer,
         schedule=schedule,
-        loss=torch.nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id, label_smoothing=0.1),
+        loss=torch.nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id, label_smoothing=args.label_smoothing),
         metrics=torchmetrics.Accuracy(
             task="multiclass", num_classes=len(minutes.train.label_vocab), ignore_index=tokenizer.pad_token_id
             ),
