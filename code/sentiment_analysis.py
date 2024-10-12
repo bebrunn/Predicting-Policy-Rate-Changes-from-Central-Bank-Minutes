@@ -15,13 +15,13 @@ from cbminutes_dataset import CBMinutesDataset
 
 # Create argsparser to adjust arguments in shell.
 parser = argparse.ArgumentParser()
-parser.add_argument("--batch_size", default=16, type=int, help="Batch size used for training.")
-parser.add_argument("--epochs", default=3, type=int, help="Number of training epochs.")
+parser.add_argument("--batch_size", default=32, type=int, help="Batch size used for training.")
+parser.add_argument("--epochs", default=4, type=int, help="Number of training epochs.")
 parser.add_argument("--seed", default=17, type=int, help="Random seed.")
 parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
 parser.add_argument("--backbone", default="bert-base-uncased", type=str, help="Pre-trained transformer.")
 parser.add_argument("--learning_rate", default=5e-05, type=float, help="Learning rate.")
-parser.add_argument("--lr_schedule", default="cosine", type=str, choices=["linear", "cosine"], help="LR schedule.")
+parser.add_argument("--lr_schedule", default="linear", type=str, choices=["linear", "cosine"], help="LR schedule.")
 parser.add_argument("--dropout", default=0.1, type=float, help="Dropout rate.")
 parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight decay.")
 parser.add_argument("--label_smoothing", default=0.1, type=float, help="Label smoothing.")
@@ -35,17 +35,17 @@ class Model(TrainableModule):
         super().__init__()
         # Initialize Model class by defining it.
         self._backbone = backbone
-        # self._dense = torch.nn.Linear(backbone.config.hidden_size, backbone.config.hidden_size * 3)
-        # self._dropout = torch.nn.Dropout(args.dropout)
-        # self._activation = torch.nn.GELU()
-        self._classifier = torch.nn.Linear(backbone.config.hidden_size, len(dataset.label_vocab))
+        self._dense = torch.nn.Linear(backbone.config.hidden_size, backbone.config.hidden_size * 3)
+        self._dropout = torch.nn.Dropout(args.dropout)
+        self._activation = torch.nn.GELU()
+        self._classifier = torch.nn.Linear(backbone.config.hidden_size * 3, len(dataset.label_vocab))
 
     # Implement the model computation.
     def forward(self, input_ids, attention_mask):
         hidden = self._backbone(input_ids, attention_mask).last_hidden_state
-        # hidden = self._dense(hidden)
-        # hidden = self._activation(hidden)
-        # hidden = self._dropout(hidden)
+        hidden = self._dense(hidden)
+        hidden = self._activation(hidden)
+        hidden = self._dropout(hidden)
         hidden = hidden[:, 0]
         hidden = self._classifier(hidden)
         # hidden = torch.mean(hidden, dim=1)
@@ -75,20 +75,21 @@ def main(args):
 
     # Create the dataloaders
     def prepare_example(example):
-        return example["document"], example["label"]
+        return example["document"], minutes.train.label_vocab.index(example["label"])
     
     def prepare_batch(data):
         documents, labels = zip(*data)
         tokenized_docs = tokenizer(documents, padding="longest", return_attention_mask=True, return_tensors="pt")
         input_ids, attention_mask = tokenized_docs["input_ids"], tokenized_docs["attention_mask"]
-        label_ids = minutes.train.label_vocab.indices(labels)
-        return (input_ids, attention_mask), torch.tensor(label_ids, dtype=torch.long)
+        return (input_ids, attention_mask), torch.tensor(labels)
     
     def create_dataloader(dataset, shuffle):
         return torch.utils.data.DataLoader(
             dataset.transform(prepare_example), args.batch_size, shuffle, collate_fn=prepare_batch
         )
     
+    print(minutes.train.label_vocab._string_map)
+
     # Create dataloader objects from datasets
     train = create_dataloader(minutes.train, shuffle=True)
     dev = create_dataloader(minutes.dev, shuffle=False)
@@ -146,7 +147,7 @@ def main(args):
         # Predict the tags on the test set.
         predictions = model.predict(test)
         for sentence in predictions:
-            print(minutes.train.label_vocab.string(int(np.argmax(sentence))), file=predictions_file)
+            print(minutes.train.label_vocab.string(np.argmax(sentence)), file=predictions_file)
     
 if __name__ == "__main__":
     args = parser.parse_args([] if "__file__" not in globals() else None)

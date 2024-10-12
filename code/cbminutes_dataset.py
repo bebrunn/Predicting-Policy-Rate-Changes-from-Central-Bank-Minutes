@@ -10,9 +10,11 @@ class Vocabulary:
 
     # Initialize the Vocabulary class by creating a list  of strings 
     # and then a mapping from strings to indices.
-    def __init__(self, strings):
+    def __init__(self, strings, add_special_tokens=True):
         # TODO: Why does [] perform so much better than ["[PAD]", "[UNK]"]???
-        self._strings = ["[PAD]", "[UNK]"]
+        self._strings = []
+        if add_special_tokens:
+            self._strings = ["[PAD]", "[UNK]"]
         self._strings.extend(strings)
         self._string_map = {string: index for index, string in enumerate(self._strings)}
     
@@ -30,7 +32,7 @@ class Vocabulary:
     
     # Returns the index-th strings.
     def strings(self, indices):
-        return [self._string[index] for index in indices]
+        return [self._strings[index] for index in indices]
     
     # Return the index of a given string.
     # Returns "[UNK]" if string not found.
@@ -41,6 +43,7 @@ class Vocabulary:
     # Returns "[UNK]" if a string not found.
     def indices(self, strings):
         return [self._string_map.get(string, Vocabulary.UNK) for string in strings]
+    
     
 
 # Create the CBMinutesDataset class.
@@ -64,7 +67,7 @@ class CBMinutesDataset:
             if train:
                 self._label_vocab = train.label_vocab
             else:
-                self._label_vocab = Vocabulary(sorted(set(self._data["labels"])))
+                self._label_vocab = Vocabulary(sorted(set(self._data["labels"])), add_special_tokens=False)
 
         # Property to access the internal dataset (_data) of the instance.
         @property
