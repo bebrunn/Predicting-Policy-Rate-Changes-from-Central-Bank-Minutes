@@ -19,7 +19,7 @@ parser.add_argument("--batch_size", default=32, type=int, help="Batch size used 
 parser.add_argument("--epochs", default=4, type=int, help="Number of training epochs.")
 parser.add_argument("--seed", default=17, type=int, help="Random seed.")
 parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
-parser.add_argument("--backbone", default="bert-base-uncased", type=str, help="Pre-trained transformer.")
+parser.add_argument("--backbone", default="bert-large-uncased", type=str, help="Pre-trained transformer.")
 parser.add_argument("--learning_rate", default=5e-05, type=float, help="Learning rate.")
 parser.add_argument("--lr_schedule", default="linear", type=str, choices=["linear", "cosine"], help="LR schedule.")
 parser.add_argument("--dropout", default=0.1, type=float, help="Dropout rate.")
@@ -48,7 +48,6 @@ class Model(TrainableModule):
         hidden = self._dropout(hidden)
         hidden = hidden[:, 0]
         hidden = self._classifier(hidden)
-        # hidden = torch.mean(hidden, dim=1)
         return hidden
 
 def main(args):
@@ -73,22 +72,25 @@ def main(args):
     # Load the data
     minutes = CBMinutesDataset("../data")
 
+    print(minutes.train.label_vocab._string_map)
+
     # Create the dataloaders
     def prepare_example(example):
         return example["document"], minutes.train.label_vocab.index(example["label"])
     
     def prepare_batch(data):
         documents, labels = zip(*data)
-        tokenized_docs = tokenizer(documents, padding="longest", return_attention_mask=True, return_tensors="pt")
-        input_ids, attention_mask = tokenized_docs["input_ids"], tokenized_docs["attention_mask"]
-        return (input_ids, attention_mask), torch.tensor(labels)
+        tokenized = tokenizer(documents, padding="longest", return_tensors="pt")
+        return (tokenized.input_ids, tokenized.attention_mask), torch.tensor(labels)
     
     def create_dataloader(dataset, shuffle):
         return torch.utils.data.DataLoader(
             dataset.transform(prepare_example), args.batch_size, shuffle, collate_fn=prepare_batch
         )
     
-    print(minutes.train.label_vocab._string_map)
+    print(f"Label vocabulary size: {len(minutes.train.label_vocab)}")
+    print(f"Label vocabulary contents: {minutes.train.label_vocab._string_map}")
+
 
     # Create dataloader objects from datasets
     train = create_dataloader(minutes.train, shuffle=True)
@@ -105,21 +107,19 @@ def main(args):
     total_steps = len(train) * args.epochs
     warmup_steps = int(0.1 * total_steps)
 
-    # Choose schedule given argument. 
+    # Choose schedule given the parsed argument. 
     if args.lr_schedule == "linear":
         schedule = transformers.get_linear_schedule_with_warmup(
             optimizer, 
             num_warmup_steps=warmup_steps,
             num_training_steps=total_steps,
         )
-    elif args.lr_schedule == "cosine":
+    else:
         schedule = transformers.get_cosine_schedule_with_warmup(
             optimizer, 
             num_warmup_steps=warmup_steps,
             num_training_steps=total_steps,
         )
-    else:
-        schedule = None
 
     # Configure model and train
     model.configure(
