@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Define the list of hyperparameters to vary
+# Define the list of hyperparameters to vary from Delvin et al. (2019)
 batch_sizes=(16 32)
 epochs=(2 3 4)
 learning_rates=(5e-5 3e-5 2e-5)

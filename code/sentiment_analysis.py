@@ -35,17 +35,11 @@ class Model(TrainableModule):
         super().__init__()
         # Initialize Model class by defining it.
         self._backbone = backbone
-        self._dense = torch.nn.Linear(backbone.config.hidden_size, backbone.config.hidden_size * 3)
-        self._dropout = torch.nn.Dropout(args.dropout)
-        self._activation = torch.nn.GELU()
-        self._classifier = torch.nn.Linear(backbone.config.hidden_size * 3, len(dataset.label_vocab))
+        self._classifier = torch.nn.Linear(backbone.config.hidden_size, len(dataset.label_vocab))
 
     # Implement the model computation.
     def forward(self, input_ids, attention_mask):
         hidden = self._backbone(input_ids, attention_mask).last_hidden_state
-        hidden = self._dense(hidden)
-        hidden = self._activation(hidden)
-        hidden = self._dropout(hidden)
         hidden = hidden[:, 0]
         hidden = self._classifier(hidden)
         return hidden
@@ -125,9 +119,9 @@ def main(args):
     model.configure(
         optimizer=optimizer,
         schedule=schedule,
-        loss=torch.nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id, label_smoothing=args.label_smoothing),
+        loss=torch.nn.CrossEntropyLoss(label_smoothing=args.label_smoothing),
         metrics=torchmetrics.Accuracy(
-            task="multiclass", num_classes=len(minutes.train.label_vocab), ignore_index=tokenizer.pad_token_id
+            task="multiclass", num_classes=len(minutes.train.label_vocab)
             ),
         logdir=args.logdir,
     )
