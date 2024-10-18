@@ -10,7 +10,7 @@ label_smoothings=(0.0 0.1)
 # Other constant hyperparameters
 seed=17
 threads=1
-backbone="bert-base-uncased"
+backbone="bert-large-uncased"
 dropout=0.1
 weight_decay=0.01
 

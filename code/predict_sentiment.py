@@ -66,7 +66,7 @@ def main(args):
     nlp = spacy.load("en_core_web_sm")
 
     # Load new data.
-    minutes = UnseenMinutes("../data/new_data", nlp)
+    minutes = UnseenMinutes("../data/cnb_minutes", nlp)
 
     # Get string map of labels.
     labels = dataset.train.label_vocab._string_map

@@ -21,11 +21,11 @@ parser.add_argument("--seed", default=17, type=int, help="Random seed.")
 parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
 parser.add_argument("--backbone", default="bert-large-uncased", type=str, help="Pre-trained transformer.")
 parser.add_argument("--learning_rate", default=5e-05, type=float, help="Learning rate.")
-parser.add_argument("--lr_schedule", default="linear", type=str, choices=["linear", "cosine"], help="LR schedule.")
-parser.add_argument("--dropout", default=0.1, type=float, help="Dropout rate.")
+parser.add_argument("--lr_schedule", default="cosine", type=str, choices=["linear", "cosine"], help="LR schedule.")
+# parser.add_argument("--dropout", default=0.1, type=float, help="Dropout rate.")
 parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight decay.")
 parser.add_argument("--label_smoothing", default=0.1, type=float, help="Label smoothing.")
-# parser.add_argument("--save_weights", default=False, type=bool, help="Save model weights.")
+parser.add_argument("--save_weights", default=False, type=bool, help="Save model weights.")
 
 # FIXME: Add more arguments if needed (e.g., dropout rate, size of dense layer, etc.).
 
@@ -129,10 +129,10 @@ def main(args):
     # Fit the model to the data
     model.fit(train, dev=dev, epochs=args.epochs)
 
-    # # Save the model weights
-    # if args.save_weights:
-    #     os.makedirs(args.logdir, exist_ok=True)
-    #     torch.save(model.state_dict(), os.path.join(args.logdir, "model_weights.pth"))
+    # Save the model weights
+    if args.save_weights:
+        os.makedirs(args.logdir, exist_ok=True)
+        torch.save(model.state_dict(), os.path.join(args.logdir, "model_weights.pth"))
         
 
     # Generate test set annotations, but in 'args.logdir' to allow for parallel execution
