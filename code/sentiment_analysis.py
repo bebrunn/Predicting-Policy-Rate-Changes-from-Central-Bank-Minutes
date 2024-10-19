@@ -4,8 +4,12 @@ import argparse
 import datetime
 import os
 import re
+os.environ.setdefault("KERAS_BACKEND", "torch")
+
 
 import numpy as np
+
+import keras
 
 import torch
 import torchmetrics
@@ -18,12 +22,12 @@ from cbminutes_dataset import CBMinutesDataset
 
 # Create argsparser to adjust arguments in shell.
 parser = argparse.ArgumentParser()
-parser.add_argument("--batch_size", default=32, type=int, help="Batch size used for training.")
+parser.add_argument("--batch_size", default=16, type=int, help="Batch size used for training.")
 parser.add_argument("--epochs", default=10, type=int, help="Number of training epochs.")
 parser.add_argument("--seed", default=17, type=int, help="Random seed.")
 parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
 parser.add_argument("--backbone", default="roberta-large", type=str, help="Pre-trained transformer.")
-parser.add_argument("--learning_rate", default=3e-05, type=float, help="Learning rate.")
+parser.add_argument("--learning_rate", default=1e-05, type=float, help="Learning rate.")
 parser.add_argument("--lr_schedule", default="linear", type=str, choices=["linear", "cosine"], help="LR schedule.")
 parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight decay.")
 parser.add_argument("--label_smoothing", default=0.1, type=float, help="Label smoothing.")
@@ -128,6 +132,7 @@ def main(args):
         logdir=args.logdir,
     )
     
+    # FIXME: Make early stopping work with trainable module!
     # Create early stopping callback.
     early_stopping = EarlyStopping(monitor="dev_loss", patience=2, mode="min")
 
