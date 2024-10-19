@@ -11,8 +11,6 @@ import torch
 import torchmetrics
 import transformers
 
-from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-
 from trainable_module import TrainableModule
 from cbminutes_dataset import CBMinutesDataset
 
@@ -22,9 +20,9 @@ parser.add_argument("--batch_size", default=32, type=int, help="Batch size used 
 parser.add_argument("--epochs", default=10, type=int, help="Number of training epochs.")
 parser.add_argument("--seed", default=17, type=int, help="Random seed.")
 parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
-parser.add_argument("--backbone", default="roberta-large", type=str, help="Pre-trained transformer.")
-parser.add_argument("--learning_rate", default=3e-05, type=float, help="Learning rate.")
-parser.add_argument("--lr_schedule", default="linear", type=str, choices=["linear", "cosine"], help="LR schedule.")
+parser.add_argument("--backbone", default="bert-large-uncased", type=str, help="Pre-trained transformer.")
+parser.add_argument("--learning_rate", default=5e-05, type=float, help="Learning rate.")
+parser.add_argument("--lr_schedule", default="cosine", type=str, choices=["linear", "cosine"], help="LR schedule.")
 parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight decay.")
 parser.add_argument("--label_smoothing", default=0.1, type=float, help="Label smoothing.")
 parser.add_argument("--save_weights", default=False, type=bool, help="Save model weights.")
@@ -128,11 +126,8 @@ def main(args):
         logdir=args.logdir,
     )
     
-    # Create early stopping callback.
-    early_stopping = EarlyStopping(monitor="dev_loss", patience=2, mode="min")
-
     # Fit the model to the data
-    model.fit(train, dev=dev, epochs=args.epochs, callbacks=[early_stopping])
+    model.fit(train, dev=dev, epochs=args.epochs)
 
     # Save the model weights
     if args.save_weights:
