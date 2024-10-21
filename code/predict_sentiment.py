@@ -91,21 +91,26 @@ def main(args):
 
             with torch.no_grad():
                 predictions = model(input_ids, attention_mask)
-                sentence_predictions = predictions[:, labels["hawkish"]] - predictions[:, labels["dovish"]]
-                all_sentence_predictions.extend(sentence_predictions.cpu().numpy())
+                sent_class_pred = torch.argmax(predictions, axis=1)
+                logits_diff = predictions[:, labels["hawkish"]] - predictions[:, labels["dovish"]]
+                all_sentence_predictions.extend(zip(sent_class_pred.cpu().numpy(), logits_diff.cpu().numpy()))
+
+        # Get sentiment as categorical variable
+        sentiment = np.bincount([element[0] for element in all_sentence_predictions]).argmax()
 
         # Compute overall sentiment for the document by averaging sentence predictions
-        overall_sentiment = np.mean(all_sentence_predictions)
+        hawk_pref_score = np.mean([element[1] for element in all_sentence_predictions])
 
         # Store overall sentiment for each document
-        document_sentiments[doc_name] = overall_sentiment
+        document_sentiments[doc_name] = [sentiment, hawk_pref_score]
     
     # Save the predicition
     pred_directory = "../predictions"
     os.makedirs(pred_directory, exist_ok=True)
     with open(os.path.join(pred_directory, "sentiment_predictions.tsv"), "w", encoding="utf-8") as file:
-        for doc_name, sentiment in document_sentiments.items():
-            file.write(f"{doc_name}\t{sentiment}\n")
+        file.write("document\tsentiment\thawk_pref_score\n")        
+        for doc_name, predictions in document_sentiments.items():
+                file.write(f"{doc_name}\t{dataset.train.label_vocab.string(predictions[0])}\t{predictions[1]}\n")
 
 
 if __name__ == "__main__":

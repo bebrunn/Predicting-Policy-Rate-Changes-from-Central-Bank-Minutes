@@ -109,6 +109,7 @@ def main(args):
         optimizer, 
         num_warmup_steps=warmup_steps,
         num_training_steps=total_steps,
+    )
    
     # Configure model and train
     model.configure(

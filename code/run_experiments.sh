@@ -8,7 +8,6 @@ learning_rates=(3e-5 2e-5 1e-5)
 seed=17
 threads=1
 backbone="roberta-large"
-dropout=0.1
 weight_decay=0.01
 label_smoothing=0.1  # Fixed to match usage
 epochs=10
@@ -20,13 +19,12 @@ for batch_size in "${batch_sizes[@]}"; do
     # Run the Python script with the current combination
     python3 sentiment_analysis.py \
       --batch_size $batch_size \
-      --epochs $epochs \  # Fixed the variable name
+      --epochs $epochs \
       --learning_rate $learning_rate \
       --label_smoothing $label_smoothing \
       --seed $seed \
       --threads $threads \
       --backbone $backbone \
-      --dropout $dropout \
       --weight_decay $weight_decay
   done
 done
