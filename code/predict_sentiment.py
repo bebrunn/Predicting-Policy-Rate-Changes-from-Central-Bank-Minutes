@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import os
 import argparse
 from pathlib import Path
@@ -51,6 +50,13 @@ class UnseenMinutes:
 
 
 def main(args):
+    # Set the random seed and number of threads.
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if args.threads:
+        torch.set_num_threads(args.threads)
+        torch.set_num_interop_threads(args.threads)
+
     # Load the model and its weights for inference
     backbone = transformers.AutoModel.from_pretrained(args.backbone)
     dataset = CBMinutesDataset("../data")

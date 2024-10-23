@@ -79,12 +79,17 @@ class TrainableModule(torch.nn.Module):
                 data_and_progress.set_description(" ".join(message), refresh=False)
             if dev is not None:
                 logs |= {"dev_" + k: v for k, v in self.evaluate(dev, verbose=0).items()}
+            early_stop_triggered = False
             for callback in callbacks:
-                callback(self, epoch, logs)
+                if callback(self, epoch, logs):
+                    early_stop_triggered = True
             self.add_logs("train", {k: v for k, v in logs.items() if not k.startswith("dev_")}, epoch + 1)
             self.add_logs("dev", {k[4:]: v for k, v in logs.items() if k.startswith("dev_")}, epoch + 1)
             verbose and print(epoch_message, "{:.1f}s".format(self._time() - start),
                               *[f"{k}={v:#.{0<abs(v)<2e-4 and '3g' or '4f'}}" for k, v in logs.items()])
+            # Early stop break outside nested loops.
+            if early_stop_triggered:
+                break
         return logs
 
     def train_step(self, xs, y):
