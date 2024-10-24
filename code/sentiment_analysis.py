@@ -23,7 +23,6 @@ parser.add_argument("--backbone", default="roberta-large", type=str, help="Pre-t
 parser.add_argument("--learning_rate", default=2e-05, type=float, help="Learning rate.")
 parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight decay.")
 parser.add_argument("--label_smoothing", default=0.1, type=float, help="Label smoothing.")
-parser.add_argument("--save_weights", default=False, type=bool, help="Save model weights.")
 
 # 3e-05 works best at the moment bs=32
 
@@ -42,24 +41,35 @@ class Model(TrainableModule):
         hidden = self._classifier(hidden)
         return hidden
 
-# Create early stopper.
+# Early stopping with model checkpoint.
 class EarlyStopper:
-    def __init__(self, patience=2, min_delta=0):
+    def __init__(self, logdir, patience=3, delta=0):
+        self._logdir = logdir
         self._patience = patience
-        self._min_delta = min_delta
+        self._delta = delta
         self._counter = 0
         self._min_dev_loss = np.inf
 
+        # Ensure the log directory exists
+        os.makedirs(self._logdir, exist_ok=True)
+
     def __call__(self, model, epoch, logs):
         dev_loss = logs.get("dev_loss")
+        if dev_loss is None:
+            raise ValueError("dev_loss not found in logs.")
         if dev_loss < self._min_dev_loss:
             self._min_dev_loss = dev_loss
             self._counter = 0
-        elif dev_loss > (self._min_dev_loss + self._min_delta):
+            self._save_checkpoint(model)
+        elif dev_loss > (self._min_dev_loss + self._delta):
             self._counter += 1
             if self._counter >= self._patience:
                 return True
         return False
+
+    def _save_checkpoint(self, model):
+        checkpoint_path = os.path.join(self._logdir, "model_weights.pth")
+        torch.save(model.state_dict(), checkpoint_path)
 
 def main(args):
     # Set the random seed and number of threads.
@@ -137,12 +147,6 @@ def main(args):
 
     # Fit the model to the data
     model.fit(train, dev=dev, epochs=args.epochs, callbacks=[early_stopping])
-
-    # Save the model weights
-    if args.save_weights:
-        os.makedirs(args.logdir, exist_ok=True)
-        torch.save(model.state_dict(), os.path.join(args.logdir, "model_weights.pth"))
-        
 
     # Generate test set annotations, but in 'args.logdir' to allow for parallel execution
     os.makedirs(args.logdir, exist_ok=True)
