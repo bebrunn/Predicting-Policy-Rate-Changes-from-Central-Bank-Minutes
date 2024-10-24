@@ -43,7 +43,6 @@ class Model(TrainableModule):
         return hidden
 
 # Create early stopper.
-# FIXME: Add restore best weights!!!!
 class EarlyStopper:
     def __init__(self, patience=2, min_delta=0):
         self._patience = patience
@@ -84,7 +83,7 @@ def main(args):
     # Load the data
     minutes = CBMinutesDataset("../data")
 
-    print(minutes.train.label_vocab._string_map)
+    print(f"Labels: {minutes.train.label_vocab._string_map}")
 
     # Create the dataloaders
     def prepare_example(example):
@@ -99,10 +98,6 @@ def main(args):
         return torch.utils.data.DataLoader(
             dataset.transform(prepare_example), args.batch_size, shuffle, collate_fn=prepare_batch
         )
-    
-    print(f"Label vocabulary size: {len(minutes.train.label_vocab)}")
-    print(f"Label vocabulary contents: {minutes.train.label_vocab._string_map}")
-
 
     # Create dataloader objects from datasets
     train = create_dataloader(minutes.train, shuffle=True)
