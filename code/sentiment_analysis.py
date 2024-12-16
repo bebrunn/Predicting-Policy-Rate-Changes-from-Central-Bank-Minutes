@@ -66,8 +66,6 @@ def main(args):
     # Load the data
     minutes = CBMinutesDataset("../data")
 
-    print(minutes.train.label_vocab._string_map)
-
     # Create the dataloaders
     def prepare_example(example):
         return example["document"], minutes.train.label_vocab.index(example["label"])
@@ -95,7 +93,7 @@ def main(args):
 
     # Create the number of total and warm-up steps
     total_steps = len(train) * args.epochs
-    warmup_steps = int(0.06 * total_steps)
+    warmup_steps = int(0.1 * total_steps)
 
     # Choose schedule given the parsed argument. 
     if args.lr_schedule == "linear":
