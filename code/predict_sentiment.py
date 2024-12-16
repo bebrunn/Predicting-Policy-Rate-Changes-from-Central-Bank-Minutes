@@ -10,7 +10,7 @@ import spacy
 import numpy as np
 
 # Import data set and model for inference
-from cbminutes_dataset import Vocabulary, CBMinutesDataset
+from cbminutes_dataset import CBMinutesDataset
 from sentiment_analysis import parser, Model
 
 # Create argsparser to adjust arguments in shell.
@@ -59,7 +59,7 @@ def main(args):
 
     # Load the model and its weights for inference
     backbone = transformers.AutoModel.from_pretrained(args.backbone)
-    dataset = CBMinutesDataset("../data")
+    minutes = CBMinutesDataset("../data")
     model = Model(args, backbone, dataset.train)
     model.load_state_dict(torch.load(args.model_weights))
     model.eval()
@@ -72,7 +72,7 @@ def main(args):
     nlp = spacy.load("en_core_web_sm")
 
     # Load new data.
-    minutes = UnseenMinutes("../data/cnb_minutes", nlp)
+    unseen_minutes = UnseenMinutes("../data/cnb_minutes", nlp)
 
     # Get string map of labels.
     labels = dataset.train.label_vocab._string_map
@@ -85,7 +85,7 @@ def main(args):
 
     # Loop over documents and classify their sentences
     for doc_name, sentences in minutes.documents.items():
-        sentences_dataset = minutes.Dataset(sentences, tokenizer)
+        sentences_dataset = unseen_minutes.Dataset(sentences, tokenizer)
         sentences_loader = torch.utils.data.DataLoader(
             sentences_dataset, batch_size=args.batch_size, shuffle=False, collate_fn=sentences_dataset.tokenize
         )

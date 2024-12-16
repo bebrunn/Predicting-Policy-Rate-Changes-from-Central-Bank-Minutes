@@ -94,6 +94,7 @@ def main(args):
     minutes = CBMinutesDataset("../data")
 
     print(f"Labels: {minutes.train.label_vocab._string_map}")
+    
 
     # Create the dataloaders
     def prepare_example(example):
@@ -113,6 +114,7 @@ def main(args):
     train = create_dataloader(minutes.train, shuffle=True)
     dev = create_dataloader(minutes.dev, shuffle=False)
     test = create_dataloader(minutes.test, shuffle=False)
+
     
     # Create the model.
     model = Model(args, backbone, minutes.train)
