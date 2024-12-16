@@ -81,10 +81,6 @@ def main(args):
         return torch.utils.data.DataLoader(
             dataset.transform(prepare_example), args.batch_size, shuffle, collate_fn=prepare_batch
         )
-    
-    print(f"Label vocabulary size: {len(minutes.train.label_vocab)}")
-    print(f"Label vocabulary contents: {minutes.train.label_vocab._string_map}")
-
 
     # Create dataloader objects from datasets
     train = create_dataloader(minutes.train, shuffle=True)

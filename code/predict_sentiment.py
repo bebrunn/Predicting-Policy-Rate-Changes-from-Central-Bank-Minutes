@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import os
 import argparse
 from pathlib import Path
@@ -11,7 +10,7 @@ import spacy
 import numpy as np
 
 # Import data set and model for inference
-from cbminutes_dataset import Vocabulary, CBMinutesDataset
+from cbminutes_dataset import CBMinutesDataset
 from sentiment_analysis import parser, Model
 
 # Create argsparser to adjust arguments in shell.
@@ -51,9 +50,16 @@ class UnseenMinutes:
 
 
 def main(args):
+    # Set the random seed and number of threads.
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if args.threads:
+        torch.set_num_threads(args.threads)
+        torch.set_num_interop_threads(args.threads)
+
     # Load the model and its weights for inference
     backbone = transformers.AutoModel.from_pretrained(args.backbone)
-    dataset = CBMinutesDataset("../data")
+    minutes = CBMinutesDataset("../data")
     model = Model(args, backbone, dataset.train)
     model.load_state_dict(torch.load(args.model_weights))
     model.eval()
@@ -66,7 +72,7 @@ def main(args):
     nlp = spacy.load("en_core_web_sm")
 
     # Load new data.
-    minutes = UnseenMinutes("../data/cnb_minutes", nlp)
+    unseen_minutes = UnseenMinutes("../data/cnb_minutes", nlp)
 
     # Get string map of labels.
     labels = dataset.train.label_vocab._string_map
@@ -79,7 +85,7 @@ def main(args):
 
     # Loop over documents and classify their sentences
     for doc_name, sentences in minutes.documents.items():
-        sentences_dataset = minutes.Dataset(sentences, tokenizer)
+        sentences_dataset = unseen_minutes.Dataset(sentences, tokenizer)
         sentences_loader = torch.utils.data.DataLoader(
             sentences_dataset, batch_size=args.batch_size, shuffle=False, collate_fn=sentences_dataset.tokenize
         )
@@ -91,21 +97,26 @@ def main(args):
 
             with torch.no_grad():
                 predictions = model(input_ids, attention_mask)
-                sentence_predictions = predictions[:, labels["hawkish"]] - predictions[:, labels["dovish"]]
-                all_sentence_predictions.extend(sentence_predictions.cpu().numpy())
+                sent_class_pred = torch.argmax(predictions, axis=1)
+                logits_diff = predictions[:, labels["hawkish"]] - predictions[:, labels["dovish"]]
+                all_sentence_predictions.extend(zip(sent_class_pred.cpu().numpy(), logits_diff.cpu().numpy()))
+
+        # Get sentiment as categorical variable
+        sentiment = np.bincount([element[0] for element in all_sentence_predictions]).argmax()
 
         # Compute overall sentiment for the document by averaging sentence predictions
-        overall_sentiment = np.mean(all_sentence_predictions)
+        hawk_pref_score = np.mean([element[1] for element in all_sentence_predictions])
 
         # Store overall sentiment for each document
-        document_sentiments[doc_name] = overall_sentiment
+        document_sentiments[doc_name] = [sentiment, hawk_pref_score]
     
     # Save the predicition
     pred_directory = "../predictions"
     os.makedirs(pred_directory, exist_ok=True)
     with open(os.path.join(pred_directory, "sentiment_predictions.tsv"), "w", encoding="utf-8") as file:
-        for doc_name, sentiment in document_sentiments.items():
-            file.write(f"{doc_name}\t{sentiment}\n")
+        file.write("document\tsentiment\thawk_pref_score\n")        
+        for doc_name, predictions in document_sentiments.items():
+                file.write(f"{doc_name}\t{dataset.train.label_vocab.string(predictions[0])}\t{predictions[1]}\n")
 
 
 if __name__ == "__main__":
