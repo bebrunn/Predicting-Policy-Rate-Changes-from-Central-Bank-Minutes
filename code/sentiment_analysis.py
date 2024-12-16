@@ -25,7 +25,7 @@ parser.add_argument("--learning_rate", default=5e-05, type=float, help="Learning
 parser.add_argument("--lr_schedule", default="cosine", type=str, choices=["linear", "cosine"], help="LR schedule.")
 parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight decay.")
 parser.add_argument("--label_smoothing", default=0.1, type=float, help="Label smoothing.")
-parser.add_argument("--save_weights", default=False, type=bool, help="Save model weights.")
+#parser.add_argument("--save_weights", default=False, type=bool, help="Save model weights.")
 
 # 3e-05 works best at the moment bs=32
 
@@ -124,9 +124,9 @@ def main(args):
     model.fit(train, dev=dev, epochs=args.epochs)
 
     # Save the model weights
-    if args.save_weights:
-        os.makedirs(args.logdir, exist_ok=True)
-        torch.save(model.state_dict(), os.path.join(args.logdir, "model_weights.pth"))
+    # if args.save_weights:
+    #     os.makedirs(args.logdir, exist_ok=True)
+    #     torch.save(model.state_dict(), os.path.join(args.logdir, "model_weights.pth"))
         
 
     # Generate test set annotations, but in 'args.logdir' to allow for parallel execution
