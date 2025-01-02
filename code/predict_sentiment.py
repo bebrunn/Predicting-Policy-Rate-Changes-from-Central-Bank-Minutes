@@ -59,7 +59,7 @@ def main(args):
 
     # Load the model and its weights for inference
     backbone = transformers.AutoModel.from_pretrained(args.backbone)
-    minutes = CBMinutesDataset("../data")
+    dataset = CBMinutesDataset("../data")
     model = Model(args, backbone, dataset.train)
     model.load_state_dict(torch.load(args.model_weights))
     model.eval()
@@ -84,7 +84,7 @@ def main(args):
     document_sentiments = {}
 
     # Loop over documents and classify their sentences
-    for doc_name, sentences in minutes.documents.items():
+    for doc_name, sentences in unseen_minutes.documents.items():
         sentences_dataset = unseen_minutes.Dataset(sentences, tokenizer)
         sentences_loader = torch.utils.data.DataLoader(
             sentences_dataset, batch_size=args.batch_size, shuffle=False, collate_fn=sentences_dataset.tokenize
@@ -113,7 +113,7 @@ def main(args):
     # Save the predicition
     pred_directory = "../predictions"
     os.makedirs(pred_directory, exist_ok=True)
-    with open(os.path.join(pred_directory, "sentiment_predictions.tsv"), "w", encoding="utf-8") as file:
+    with open(os.path.join(pred_directory, "bert_sentiment_predictions.tsv"), "w", encoding="utf-8") as file:
         file.write("document\tsentiment\thawk_pref_score\n")        
         for doc_name, predictions in document_sentiments.items():
                 file.write(f"{doc_name}\t{dataset.train.label_vocab.string(predictions[0])}\t{predictions[1]}\n")
