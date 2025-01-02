@@ -7,7 +7,7 @@ learning_rates=(3e-5 2e-5 1e-5)
 # Other constant hyperparameters
 seed=17
 threads=1
-backbone="roberta-large"
+backbone="roberta-base"
 weight_decay=0.01
 label_smoothing=0.1  # Fixed to match usage
 epochs=10
