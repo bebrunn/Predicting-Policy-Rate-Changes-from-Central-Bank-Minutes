@@ -6,7 +6,7 @@ This repository contains the code and resources used for my Master's thesis. It 
 ## Repository Structure  
 
 ### Key Scripts  
-- **`cbdataset.py`**  
+- **`cbminutes_dataset.py`**  
   Prepares the data for training, development, and testing.  
   Builds on code from [this repository](https://github.com/ufal/npfl138?tab=readme-ov-file).  
 
@@ -16,18 +16,21 @@ This repository contains the code and resources used for my Master's thesis. It 
   - Fine-tunes the chosen language model for sentiment analysis.  
   Builds on code from [this repository](https://github.com/ufal/npfl138?tab=readme-ov-file).  
 
-- **`predict_sentiment.py`**  
+- **`predict_sentiments.py`**  
   Uses the fine-tuned model to predict the sentiment of the CNB minutes.  
 
 - **`trainable_module.py`**  
   Provides the necessary infrastructure to train the model in a Keras-like way.  
-  Builds on code from [this repository](https://github.com/ufal/npfl138?tab=readme-ov-file).  
+  Builds on code from [this repository](https://github.com/ufal/npfl138?tab=readme-ov-file).
 
+- **`run_experiments.sh`**  
+  Shell script that allows running experiments with different hyperparameter configurations.
+  
 ### Data  
-- **`annotated_minutes.txt`**  
+- **`annotated_minutes.csv`**  
   Annotated text sourced from Nitoi, Pochea, and Radu (2023).  
 
-- **`cb_minutes/`**  
+- **`cnb_minutes/`**  
   Directory containing the CNB minutes, sourced from the Czech National Bank (2024).  
 
 ## Prerequisites  
