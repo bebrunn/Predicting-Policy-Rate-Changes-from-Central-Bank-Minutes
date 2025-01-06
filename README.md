@@ -1,7 +1,7 @@
 # Predicting Policy Rate Changes from Central Bank Minutes Using Machine Learning  
 **Evidence from the Czech Republic (1998–2024)**  
 
-This repository contains the code and resources used for my Master's thesis. It explores the use of transfer learning to predict policy rate changes based on sentiment extracted from the Czech National Bank (CNB) minutes.  
+This repository holds the code and resources used to create the sentiment indices for my Master's thesis.
 
 ## Repository Structure  
 
