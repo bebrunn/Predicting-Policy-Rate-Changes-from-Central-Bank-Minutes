@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import argparse
 import datetime
 import os
@@ -16,16 +15,14 @@ from cbminutes_dataset import CBMinutesDataset
 
 # Create argsparser to adjust arguments in shell.
 parser = argparse.ArgumentParser()
-parser.add_argument("--batch_size", default=16, type=int, help="Batch size used for training.")
-parser.add_argument("--epochs", default=4, type=int, help="Number of training epochs.")
+parser.add_argument("--batch_size", default=32, type=int, help="Batch size used for training.")
+parser.add_argument("--epochs", default=10, type=int, help="Number of training epochs.")
 parser.add_argument("--seed", default=17, type=int, help="Random seed.")
 parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
-parser.add_argument("--backbone", default="bert-large-uncased", type=str, help="Pre-trained transformer.")
+parser.add_argument("--backbone", default="roberta-large", type=str, help="Pre-trained transformer.")
 parser.add_argument("--learning_rate", default=3e-05, type=float, help="Learning rate.")
-parser.add_argument("--lr_schedule", default="cosine", type=str, choices=["linear", "cosine"], help="LR schedule.")
 parser.add_argument("--weight_decay", default=0.01, type=float, help="Weight decay.")
 parser.add_argument("--label_smoothing", default=0.1, type=float, help="Label smoothing.")
-parser.add_argument("--save_weights", default=False, type=bool, help="Save model weights.")
 
 # 3e-05 works best at the moment bs=32
 
@@ -43,6 +40,36 @@ class Model(TrainableModule):
         hidden = hidden[:, 0]
         hidden = self._classifier(hidden)
         return hidden
+
+# Early stopping with model checkpoint.
+class EarlyStopper:
+    def __init__(self, logdir, patience=3, delta=0):
+        self._logdir = logdir
+        self._patience = patience
+        self._delta = delta
+        self._counter = 0
+        self._min_dev_loss = np.inf
+
+        # Ensure the log directory exists
+        os.makedirs(self._logdir, exist_ok=True)
+
+    def __call__(self, model, epoch, logs):
+        dev_loss = logs.get("dev_loss")
+        if dev_loss is None:
+            raise ValueError("dev_loss not found in logs.")
+        if dev_loss < self._min_dev_loss:
+            self._min_dev_loss = dev_loss
+            self._counter = 0
+            self._save_checkpoint(model)
+        elif dev_loss > (self._min_dev_loss + self._delta):
+            self._counter += 1
+            if self._counter >= self._patience:
+                return True
+        return False
+
+    def _save_checkpoint(self, model):
+        checkpoint_path = os.path.join(self._logdir, "model_weights.pth")
+        torch.save(model.state_dict(), checkpoint_path)
 
 def main(args):
     # Set the random seed and number of threads.
@@ -66,6 +93,9 @@ def main(args):
     # Load the data
     minutes = CBMinutesDataset("../data")
 
+    print(f"Labels: {minutes.train.label_vocab._string_map}")
+    
+
     # Create the dataloaders
     def prepare_example(example):
         return example["document"], minutes.train.label_vocab.index(example["label"])
@@ -84,6 +114,7 @@ def main(args):
     train = create_dataloader(minutes.train, shuffle=True)
     dev = create_dataloader(minutes.dev, shuffle=False)
     test = create_dataloader(minutes.test, shuffle=False)
+
     
     # Create the model.
     model = Model(args, backbone, minutes.train)
@@ -93,22 +124,18 @@ def main(args):
 
     # Create the number of total and warm-up steps
     total_steps = len(train) * args.epochs
-    warmup_steps = int(0.1 * total_steps)
+    warmup_steps = int(0.06 * total_steps)
 
-    # Choose schedule given the parsed argument. 
-    if args.lr_schedule == "linear":
-        schedule = transformers.get_linear_schedule_with_warmup(
-            optimizer, 
-            num_warmup_steps=warmup_steps,
-            num_training_steps=total_steps,
-        )
-    else:
-        schedule = transformers.get_cosine_schedule_with_warmup(
-            optimizer, 
-            num_warmup_steps=warmup_steps,
-            num_training_steps=total_steps,
-        )
+    # Create learning rate schedule.
+    schedule = transformers.get_linear_schedule_with_warmup(
+        optimizer, 
+        num_warmup_steps=warmup_steps,
+        num_training_steps=total_steps,
+    )
 
+    # Create early stopper object.
+   # early_stopping = EarlyStopper(patience=2)
+   
     # Configure model and train
     model.configure(
         optimizer=optimizer,
@@ -119,15 +146,9 @@ def main(args):
             ),
         logdir=args.logdir,
     )
-    
+
     # Fit the model to the data
     model.fit(train, dev=dev, epochs=args.epochs)
-
-    # Save the model weights
-    if args.save_weights:
-        os.makedirs(args.logdir, exist_ok=True)
-        torch.save(model.state_dict(), os.path.join(args.logdir, "model_weights.pth"))
-        
 
     # Generate test set annotations, but in 'args.logdir' to allow for parallel execution
     os.makedirs(args.logdir, exist_ok=True)
